@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import pandas as pd
 from sqlalchemy import create_engine, text
 
@@ -7,10 +6,10 @@ USER = 'postgres'
 PASSWORD = '123456'
 HOST = 'localhost'
 PORT = '5432'
-DATABASE = 'ecommerce_dw_ver1'
+DATABASE = 'ecommerce_dw'
 
 BASE_DIR = Path(__file__).resolve().parent
-CSV_PATH = BASE_DIR / 'data' / 'Online Retail.csv'
+CSV_PATH = BASE_DIR.parent / 'data' / 'Online Retail.csv'
 
 engine = create_engine(f"postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
 
@@ -67,7 +66,6 @@ region_map = {
 }
 dim_region_df['region_group'] = dim_region_df['Country'].map(region_map).fillna('Other International')
 dim_region_df.insert(0, 'region_key', range(1, len(dim_region_df) + 1))
-
 print("--- Dang nap du lieu vao Database ---")
 
 with engine.begin() as conn:
@@ -83,6 +81,12 @@ dim_customer_df.to_sql('dim_customer', engine, if_exists='replace', index=False)
 dim_product_df.to_sql('dim_product', engine, if_exists='replace', index=False)
 dim_time_df.to_sql('dim_time', engine, if_exists='replace', index=False)
 dim_region_df.to_sql('dim_region', engine, if_exists='replace', index=False)
+
+with engine.begin() as conn:
+    conn.execute(text('ALTER TABLE dim_customer ADD CONSTRAINT dim_customer_pk PRIMARY KEY (customer_key)'))
+    conn.execute(text('ALTER TABLE dim_product ADD CONSTRAINT dim_product_pk PRIMARY KEY (product_key)'))
+    conn.execute(text('ALTER TABLE dim_time ADD CONSTRAINT dim_time_pk PRIMARY KEY (time_key)'))
+    conn.execute(text('ALTER TABLE dim_region ADD CONSTRAINT dim_region_pk PRIMARY KEY (region_key)'))
 
 print("--- Dang anh xa khoa ngoai cho bang Fact ---")
 
@@ -126,4 +130,20 @@ fact_orders_df.columns = [
 print("--- Dang nap bang fact_orders vao PostgreSQL ---")
 fact_orders_df.to_sql('fact_orders', engine, if_exists='replace', index=False)
 
+with engine.begin() as conn:
+    conn.execute(text('ALTER TABLE fact_orders ADD CONSTRAINT fact_orders_customer_fk FOREIGN KEY (customer_key) REFERENCES dim_customer(customer_key)'))
+    conn.execute(text('ALTER TABLE fact_orders ADD CONSTRAINT fact_orders_product_fk FOREIGN KEY (product_key) REFERENCES dim_product(product_key)'))
+    conn.execute(text('ALTER TABLE fact_orders ADD CONSTRAINT fact_orders_time_fk FOREIGN KEY (time_key) REFERENCES dim_time(time_key)'))
+    conn.execute(text('ALTER TABLE fact_orders ADD CONSTRAINT fact_orders_region_fk FOREIGN KEY (region_key) REFERENCES dim_region(region_key)'))
+
 print("ETL hoan tat thanh cong!")
+
+
+
+
+
+
+
+
+
+
